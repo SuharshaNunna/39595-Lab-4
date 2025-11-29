@@ -50,19 +50,12 @@ polynomial::polynomial(Iter begin, Iter end)
 template polynomial::polynomial(std::vector<std::pair<power, coeff>>::iterator,
                                 std::vector<std::pair<power, coeff>>::iterator);
 
-// ======================================================
-// Print (debugging only)
-// ======================================================
 void polynomial::print() const
 {
     for (auto &t : terms)
         std::cout << t.second << "x^" << t.first << " ";
     std::cout << std::endl;
 }
-
-// ======================================================
-// Addition
-// ======================================================
 polynomial polynomial::operator+(const polynomial &other) const
 {
     polynomial result(*this);
@@ -90,9 +83,6 @@ polynomial operator+(int x, const polynomial &p)
     return p + x;
 }
 
-// ======================================================
-// Multiplication
-// ======================================================
 polynomial polynomial::operator*(const polynomial &other) const
 {
     polynomial result;
@@ -129,12 +119,9 @@ polynomial operator*(int x, const polynomial &p)
     return p * x;
 }
 
-// ======================================================
-// Modulo (long division remainder)
-// ======================================================
 polynomial polynomial::operator%(const polynomial &divisor) const
 {
-    // divisor == 0?
+
     if (divisor.terms.size() == 1 && divisor.terms.begin()->second == 0)
         throw std::runtime_error("Divide by zero polynomial");
 
@@ -156,16 +143,12 @@ polynomial polynomial::operator%(const polynomial &divisor) const
 
         size_t pow_shift = deg_r - deg_d;
         coeff coef_shift = coef_r / coef_d;
-
-        // temp = coef_shift * x^pow_shift
         polynomial temp;
         temp.terms.clear();
         temp.terms[pow_shift] = coef_shift;
 
-        // subtract = temp * d
         polynomial subtract = temp * d;
 
-        // remainder = remainder - subtract
         for (auto &t : subtract.terms)
             remainder.terms[t.first] -= t.second;
 
