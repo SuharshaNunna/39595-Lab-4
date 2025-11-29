@@ -4,13 +4,15 @@
 #include <vector>
 #include <utility>
 #include <cstddef>
+#include <map>
 
 using power = size_t;
 using coeff = int;
 
 class polynomial
 {
-
+private:
+    std::map<power, coeff, std::greater<power>> terms;
 public:
     /**
      * @brief Construct a new polynomial object that is the number 0 (ie. 0x^0)
@@ -76,7 +78,13 @@ public:
      * Modulo (%) should support
      * 1. polynomial % polynomial
      */
-    
+    polynomial operator+(const polynomial &other) const;
+    polynomial operator+(int x) const;
+    friend polynomial operator+(int x, const polynomial &p);
+    polynomial operator*(const polynomial &other) const;
+    polynomial operator*(int x) const;
+    friend polynomial operator*(int x, const polynomial &p);
+    polynomial operator%(const polynomial &divisor) const;
 
     /**
      * @brief Returns the degree of the polynomial
