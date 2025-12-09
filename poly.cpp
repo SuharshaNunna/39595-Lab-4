@@ -8,7 +8,7 @@
 
 static void clean(std::map<power, coeff, std::greater<power>> &terms)
 {
-    for (auto it = terms.begin(); it != terms.end(); )
+    for (auto it = terms.begin(); it != terms.end();)
     {
         if (it->second == 0)
         {
@@ -16,7 +16,7 @@ static void clean(std::map<power, coeff, std::greater<power>> &terms)
         }
         else
         {
-            ++it;
+            it++;
         }
     }
 
@@ -26,38 +26,41 @@ static void clean(std::map<power, coeff, std::greater<power>> &terms)
     }
 }
 
-// ---------- parallel multiplication helpers ----------
+// parallel multiplication helpers
 
-struct MulTask {
+struct multiplication
+{
     const std::vector<std::pair<power, coeff>> *a;
     const std::vector<std::pair<power, coeff>> *b;
+
     size_t start;
     size_t end;
+
     std::unordered_map<power, coeff> *partial;
 };
 
-static void *multiply_worker(void *arg)
+static void *multiply(void *arg)
 {
-    MulTask *task = static_cast<MulTask*>(arg);
+    multiplication *task = static_cast<multiplication*>(arg);
     const auto &a = *(task->a);
     const auto &b = *(task->b);
-    auto &local = *(task->partial);
+    auto &x = *(task->partial);
 
-    for (size_t i = task->start; i < task->end; ++i)
+    for (size_t i = task->start; i < task->end; i++)
     {
         const auto &at = a[i];
         for (const auto &bt : b)
         {
             power p = at.first + bt.first;
             coeff c = at.second * bt.second;
-            local[p] += c;
+            x[p] += c;
         }
     }
 
     return nullptr;
 }
 
-// ---------- polynomial member functions ----------
+// polynomial member functions
 
 polynomial::polynomial()
 {
@@ -81,7 +84,7 @@ polynomial &polynomial::operator=(const polynomial &other)
 template <typename Iter>
 polynomial::polynomial(Iter begin, Iter end)
 {
-    for (auto it = begin; it != end; ++it)
+    for (auto it = begin; it != end; it++)
     {
         terms[it->first] += it->second;
     }
@@ -89,15 +92,6 @@ polynomial::polynomial(Iter begin, Iter end)
 }
 
 template polynomial::polynomial(std::vector<std::pair<power, coeff>>::iterator, std::vector<std::pair<power, coeff>>::iterator);
-
-void polynomial::print() const
-{
-    for (auto &t : terms)
-    {
-        std::cout << t.second << "x^" << t.first << " ";
-    }
-    std::cout << std::endl;
-}
 
 polynomial polynomial::operator+(const polynomial &other) const
 {
@@ -127,7 +121,7 @@ polynomial operator+(int x, const polynomial &p)
     return p + x;
 }
 
-// ---------- parallel operator* implementation using unordered_map ----------
+// parallel operator* implementation using unordered_map
 
 polynomial polynomial::operator*(const polynomial &other) const
 {
@@ -146,10 +140,10 @@ polynomial polynomial::operator*(const polynomial &other) const
     }
 
     const int MAX_THREADS = 8;
-    int num_threads = static_cast<int>(std::min<size_t>(MAX_THREADS, a.size()));
+    int num = static_cast<int>(std::min<size_t>(MAX_THREADS, a.size()));
 
     // small polynomials
-    if (num_threads <= 1)
+    if (num <= 1)
     {
         polynomial result;
         result.terms.clear();
@@ -168,18 +162,18 @@ polynomial polynomial::operator*(const polynomial &other) const
         return result;
     }
 
-    std::vector<pthread_t> threads(num_threads);
-    std::vector<MulTask> tasks(num_threads);
-    std::vector<std::unordered_map<power, coeff>> partials(num_threads);
+    std::vector<pthread_t> threads(num);
+    std::vector<multiplication> tasks(num);
+    std::vector<std::unordered_map<power, coeff>> partials(num);
 
     size_t n = a.size();
-    size_t chunk = (n + num_threads - 1) / num_threads; 
+    size_t x = (n + num - 1) / num; 
 
     // launch threads
-    for (int t = 0; t < num_threads; ++t)
+    for (int t = 0; t < num; ++t)
     {
-        size_t start = t * chunk;
-        size_t end = std::min(n, start + chunk);
+        size_t start = t * x;
+        size_t end = std::min(n, start + x);
 
         if (start >= end)
         {
@@ -193,11 +187,11 @@ polynomial polynomial::operator*(const polynomial &other) const
         tasks[t].end = end;
         tasks[t].partial = &partials[t];
 
-        pthread_create(&threads[t], nullptr, multiply_worker, &tasks[t]);
+        pthread_create(&threads[t], nullptr, multiply, &tasks[t]);
     }
 
     // join threads
-    for (int t = 0; t < num_threads; ++t)
+    for (int t = 0; t < num; ++t)
     {
         if (threads[t] != 0)
         {
@@ -239,16 +233,16 @@ polynomial operator*(int x, const polynomial &p)
     return p * x;
 }
 
-polynomial polynomial::operator%(const polynomial &divisor) const
+polynomial polynomial::operator%(const polynomial &mod) const
 {
 
-    if (divisor.terms.size() == 1 && divisor.terms.begin()->second == 0)
+    if (mod.terms.size() == 1 && mod.terms.begin()->second == 0)
     {
-        throw std::runtime_error("Divide by zero polynomial");
+        throw std::runtime_error("error");
     }
 
     polynomial remainder(*this);
-    polynomial d(divisor);
+    polynomial d(mod);
 
     clean(remainder.terms);
     clean(d.terms);
@@ -261,11 +255,12 @@ polynomial polynomial::operator%(const polynomial &divisor) const
         coeff coef_r = remainder.terms[deg_r];
         coeff coef_d = d.terms[deg_d];
 
-        size_t pow_shift = deg_r - deg_d;
-        coeff coef_shift = coef_r / coef_d;
+        size_t pow = deg_r - deg_d;
+        coeff coef = coef_r / coef_d;
         polynomial temp;
+        
         temp.terms.clear();
-        temp.terms[pow_shift] = coef_shift;
+        temp.terms[pow] = coef;
 
         polynomial subtract = temp * d;
 
